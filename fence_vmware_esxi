@@ -111,11 +111,6 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Pod::Usage;
-use Sys::Syslog qw(:standard);
-
-BEGIN {
-	openlog "fence_vmware_esxi", "pid", "local0";
-}
 
 eval {
 	require Net::SSH::Expect;
@@ -176,6 +171,7 @@ my %opts = (
 	"login=s" => \$login,
 	"passwd=s" => \$passwd,
 	"nodename=s" => \$nodename,
+	"port=s" => \$nodename,
 	"action=s" => \$action,
 	"timeout=i" => \$timeout,
 	"verbose" => \$verbose,
@@ -203,15 +199,12 @@ else {
 		$line =~ s/^\s*//;
 		$line =~ s/\s*$//;
 		next if $line =~ /^#/;
-		warn "$line\n";
 		my ($name, $value) = ($line =~ /(.*)=(.*)/);
-		syslog "info", $line;
 		unless (exists $l_opts{$name}) {
 			warn "warning: unknown argument $name\n";
 		}
 		${$l_opts{$name}} = $value;
 	}
-	close STDIN;
 }
 $login   ||= "root";
 $verbose ||= 0;
@@ -250,7 +243,7 @@ $vmid || die "failed: no VM named '$nodename' found on ESXi host $ipaddr\n";
 my $state = get_status( $ssh, $vmid );
 
 if ($action eq 'status') {
-	print "success: $nodename is $state\n";
+	print "Status: $state\n";
 	if ($state eq 'on') {
 		exit 0;
 	}
@@ -262,7 +255,7 @@ if ($action eq 'status') {
 	}
 }
 elsif ($state eq $action) {
-	print "success: nothing to do, VM $nodename is already $state\n";
+	print "Status: $state\n";
 	exit;
 }
 elsif ($action eq 'off') {
@@ -284,6 +277,6 @@ else {
 }
 
 # Just in case we haven't already quit
-print "success: VM $nodename is now $action\n";
+print "Status: $action\n";
 $ssh->close();
 exit;
